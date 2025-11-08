@@ -1,0 +1,3 @@
+[submodule "peacefulrobot.github.io"]
+	path = peacefulrobot.github.io
+	url = https://github.com/peacefulrobot/peacefulrobot.github.io.git
