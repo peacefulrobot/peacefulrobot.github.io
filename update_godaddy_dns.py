@@ -1,10 +1,54 @@
 import os
 import requests
 import json
+import logging
+import time
+import re
+from functools import wraps
 
-# GoDaddy API configuration
+logging.basicConfig(
+    filename='dns_updates.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+last_calls = []
+
+def rate_limit(calls_per_minute=30):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            global last_calls
+            now = time.time()
+            last_calls = [call for call in last_calls if call > now - 60]
+            if len(last_calls) >= calls_per_minute:
+                raise Exception(f'Rate limit exceeded: {calls_per_minute} calls per minute')
+            last_calls.append(now)
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+def validate_domain(domain):
+    if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$', domain):
+        raise ValueError(f'Invalid domain format: {domain}')
+
+def validate_record_type(record_type):
+    valid_types = ['A', 'AAAA', 'CNAME', 'MX', 'NS', 'SOA', 'SRV', 'TXT']
+    if record_type not in valid_types:
+        raise ValueError(f'Invalid record type: {record_type}')
+
+def validate_ip(ip):
+    if not re.match(r'^\d{1,3}(\.\d{1,3}){3}$', ip):
+        raise ValueError(f'Invalid IP format: {ip}')
+    for octet in ip.split('.'):
+        if not 0 <= int(octet) <= 255:
+            raise ValueError(f'Invalid IP octet value in: {ip}')
+
 API_KEY = os.getenv('GODADDY_API_KEY', '')
-API_SECRET = os.getenv('GODADDY_API_SECRET', '')  # You'll need to set this
+API_SECRET = os.getenv('GODADDY_API_SECRET', '')
+
+if not API_KEY or not API_SECRET:
+    raise ValueError('API credentials not properly configured')
 DOMAIN = 'peacefulrobot.com'
 API_URL = f'https://api.godaddy.com/v1/domains/{DOMAIN}/records'
 
