@@ -5,7 +5,7 @@ Public notifications for peacefulrobot.com updates that the community can follow
 
 ## Private Notifications (Carlos)
 - **Method**: DeltaChat SMTP (already configured in private GitLab CI/CD variables)
-- **Recipient**: y2077ada7@nine.testrun.org
+- **Recipient**: Private email address (configure in GitLab CI/CD variables)
 - **Status**: Configured privately, not in public repo
 - **Security**: SMTP credentials stored as masked GitLab CI/CD variables
 

@@ -110,7 +110,7 @@ Cloudflare DNS (load balancing + health checks)
 ### GitLab CI/CD Pipeline
 - **Jobs**: `pages` (auto), `notify` (auto), `update_dns` (manual)
 - **Status**: Pages deployed ✅, Notifications configured ✅, DNS update blocked on API credentials ⚠️
-- **Email Notifications**: Sends to y2077ada7@nine.testrun.org on successful deployments
+- **Email Notifications**: Sends to private email on successful deployments
 
 ## Next Steps (from TODO.md)
 
@@ -232,7 +232,7 @@ update_dns:
 ### 10. Notification System Design
 - **Status**: ✅ Designed (Implementation TODO)
 - **Details**:
-  - **Private**: DeltaChat SMTP to y2077ada7@nine.testrun.org (Carlos)
+  - **Private**: DeltaChat SMTP to private email address
     - Configure via GitLab CI/CD masked variables (not in public repo)
     - SMTP credentials: SMTP_HOST, SMTP_PORT, SMTP_FROM, SMTP_USER, SMTP_PASSWORD
   - **Public Community**: Multiple options documented
@@ -243,7 +243,7 @@ update_dns:
 - **Files Created**:
   - `COMMUNITY_NOTIFICATIONS_TODO.md` - Complete implementation guide
 - **Commits**:
-  - `c2872fd` - "Add email notifications to y2077ada7@nine.testrun.org on deployments"
+  - `c2872fd` - "Add email notifications on deployments"
   - `2c7f673` - "Remove email notification system" (reverted Mailgun approach)
   - `7ec90f7` - "Add community notifications TODO, remove DeltaChat setup (private config)"
   - `2f37d56` - "Remove DeltaChat notification from public CI (keep private)"
