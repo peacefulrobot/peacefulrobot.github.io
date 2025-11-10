@@ -3,7 +3,7 @@
 ## Goal
 Public notifications for peacefulrobot.com updates that the community can follow.
 
-## Private Notifications (Carlos)
+## Private Notifications
 - **Method**: DeltaChat SMTP (already configured in private GitLab CI/CD variables)
 - **Recipient**: Private email address (configure in GitLab CI/CD variables)
 - **Status**: Configured privately, not in public repo
@@ -116,7 +116,7 @@ notify_rss:
 ## Recommended Approach
 
 **Multi-Channel Strategy**:
-1. **Private**: DeltaChat to Carlos (already configured)
+1. **Private**: DeltaChat notifications (configure in GitLab CI/CD variables)
 2. **Public**: Mastodon bot for community (@peacefulrobot@mastodon.social)
 3. **Universal**: RSS feed for maximum compatibility
 4. **Developers**: GitHub releases for version tracking
