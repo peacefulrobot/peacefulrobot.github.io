@@ -298,3 +298,17 @@ update_dns:
 - `TODO.md` (Updated with five nines progress)
 - `ACCOMPLISHED.md` (This file)
 - Removed: firebase.json, staticwebapp.config.json (simplified to 3 providers)
+
+
+### 12. Branch Standardization
+- **Status**: ✅ Complete
+- **Details**:
+  - Renamed `master` to `main` in submodule (peacefulrobot.github.io)
+  - Updated default branch on GitHub and GitLab
+  - Deleted old `master` branches from both remotes
+  - Updated remote HEAD references
+  - Triggered Vercel redeploy after branch rename
+  - Fixed 404 error caused by branch mismatch
+- **Commits**:
+  - `ab5a93c` - "Trigger Vercel redeploy after branch rename"
+- **Result**: All repos now use `main` as default branch (industry standard)
