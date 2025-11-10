@@ -93,20 +93,19 @@ Successfully set up GitLab Pages deployment, automated DNS update pipeline, and 
 - **GitLab Pages**: https://peacefulrobot-github-io-5de419.gitlab.io/ (backup hosting) ✅
 - **Current Uptime**: 99.9% (three nines)
 
-### Five Nines Architecture (Target)
+### Five Nines Architecture (Target - Simplified)
 ```
 Cloudflare DNS (load balancing + health checks)
     ↓
-├─→ AWS S3 + CloudFront (50GB/month free) ⏳
-├─→ GCP Firebase Hosting (10GB/month free) ⏳
-├─→ Azure Static Web Apps (100GB/month free) ⏳
 ├─→ Vercel (100GB/month free) ✅
-├─→ Netlify (100GB/month free) ⏳
-└─→ GitLab Pages (unlimited free) ✅
+├─→ GitLab Pages (unlimited free) ✅
+└─→ Netlify (100GB/month free) ⏳
 ```
-- **Target Uptime**: 99.999% (five nines) = 5.26 min/year downtime
-- **Total Bandwidth**: 460GB+/month
+- **Target Uptime**: 99.999% (five nines) = 26 sec/month downtime
+- **Math**: 99.9% × 99.9% × 99.9% = 99.999%
+- **Total Bandwidth**: 300GB+/month
 - **Cost**: $0/month
+- **Simplified**: Only 3 providers needed (not 6)
 
 ### GitLab CI/CD Pipeline
 - **Jobs**: `pages` (auto), `notify` (auto), `update_dns` (manual)
@@ -130,12 +129,14 @@ Cloudflare DNS (load balancing + health checks)
 12. ⏳ Transfer DNS to Cloudflare for automatic failover
 
 ### Future
-1. Complete five nines deployment (AWS, GCP, Azure)
-2. Configure Cloudflare load balancing and health checks
-3. Set up UptimeRobot monitoring (50 free monitors)
-4. Implement multi-tenant architecture with subdomain isolation
-5. Build agentic framework for open source security automation
-6. Add Matrix/Mastodon bot for change notifications
+1. Connect Netlify to GitHub repo (5 min setup)
+2. Transfer DNS to Cloudflare (free tier)
+3. Configure Cloudflare load balancing (3 origin pools) + health checks
+4. Set up UptimeRobot monitoring (50 free monitors)
+5. Configure private DeltaChat notifications (SMTP via GitLab CI/CD)
+6. Implement public community notifications (Mastodon/RSS/Matrix)
+7. Implement multi-tenant architecture with subdomain isolation
+8. Build agentic framework for open source security automation
 
 ## Technical Details
 
@@ -181,11 +182,13 @@ update_dns:
 ### Session 2 (2025-01-10)
 9. ❌ → ✅ Five nines architecture automation created
 10. ❌ → ✅ Vercel deployment configuration fixed
-11. ❌ → ✅ Email notifications configured
+11. ❌ → ✅ Notification system designed (DeltaChat private + community public)
 12. ❌ → ✅ GitLab sync established as source of truth
-13. ⏳ Vercel 404 issue (config updated, awaiting redeployment)
-14. ⏳ Cloud provider signups needed (AWS, GCP, Azure)
-15. ⏳ Mailgun API key setup required for notifications
+13. ❌ → ✅ Simplified to 3-provider architecture (removed Firebase/Azure complexity)
+14. ❌ → ✅ Updated TODO with 3-provider five nines plan
+15. ⏳ Netlify connection needed
+16. ⏳ Cloudflare DNS transfer and load balancing setup
+17. ⏳ UptimeRobot monitoring configuration
 
 ## Security Incidents
 - **Multiple credential exposures**: User shared GoDaddy API keys and GitLab tokens in chat
@@ -194,23 +197,26 @@ update_dns:
 
 ## Session 2: Five Nines Architecture & Notifications (2025-01-10)
 
-### 8. Five Nines Architecture Implementation
-- **Status**: ✅ Infrastructure Ready
+### 8. Five Nines Architecture - Simplified to 3 Providers
+- **Status**: ✅ Architecture Designed
 - **Details**:
-  - Created GitHub Actions workflow for multi-cloud deployment
-  - Configured Firebase (GCP), Azure Static Web Apps, AWS S3+CloudFront
-  - Target: 99.999% uptime (5.26 min/year downtime) at $0/month
-  - 6 cloud providers: AWS, GCP, Azure, Vercel, Netlify, GitLab Pages
-  - Total bandwidth: 460GB+/month free
+  - Simplified from 6 providers to 3 (only need 3 for five nines)
+  - Math: 99.9% × 99.9% × 99.9% = 99.999% (26 sec/month downtime)
+  - Providers: Vercel ✅, GitLab Pages ✅, Netlify ⏳
+  - Cloudflare free tier for load balancing + automatic failover
+  - Total bandwidth: 300GB+/month free
+  - Removed Firebase/Azure configs (unnecessary complexity)
 - **Files Created**:
-  - `.github/workflows/multi-cloud-deploy.yml` - Automated deployment to AWS/GCP/Azure
-  - `peacefulrobot.github.io/firebase.json` - GCP Firebase config
-  - `peacefulrobot.github.io/staticwebapp.config.json` - Azure config
+  - `.github/workflows/multi-cloud-deploy.yml` - Multi-cloud deployment (kept for future)
   - `FIVE_NINES_SETUP.md` - Complete setup guide
   - `STATUS.md` - Progress tracker
+  - `COMMUNITY_NOTIFICATIONS_TODO.md` - Notification options
 - **Commits**:
   - `0b17a96` - "Add five nines architecture: GitHub Actions workflow, cloud configs, setup guide"
   - `c18d98b` - "Add STATUS.md tracking five nines architecture progress"
+  - `87a5fb2` - "Add .gitignore for log files"
+  - `e1e3884` - "Update to 3-provider five nines architecture (Vercel + GitLab + Netlify)"
+  - `50bcafa` - "Update TODO: Add 3-provider setup tasks"
 
 ### 9. Vercel Deployment Fix
 - **Status**: ✅ Configuration Updated
@@ -223,20 +229,26 @@ update_dns:
   - `peacefulrobot.github.io/.vercelignore` - Exclude tools and logs
 - **Commit**: `e55834a` - "Fix Vercel deployment: update config and add ignore file"
 
-### 10. Email Notification System
-- **Status**: ✅ Complete
+### 10. Notification System Design
+- **Status**: ✅ Designed (Implementation TODO)
 - **Details**:
-  - Configured automated email notifications to `y2077ada7@nine.testrun.org`
-  - Sends on every successful deployment (GitLab + GitHub)
-  - Includes commit info, author, message, deployment URLs
-  - Uses Mailgun API (free tier: 5,000 emails/month)
-  - Alternative: ntfy.sh (no signup required)
+  - **Private**: DeltaChat SMTP to y2077ada7@nine.testrun.org (Carlos)
+    - Configure via GitLab CI/CD masked variables (not in public repo)
+    - SMTP credentials: SMTP_HOST, SMTP_PORT, SMTP_FROM, SMTP_USER, SMTP_PASSWORD
+  - **Public Community**: Multiple options documented
+    - Mastodon bot @peacefulrobot@mastodon.social (recommended)
+    - RSS feed from git log (easiest, no API)
+    - Matrix bot #peacefulrobot:matrix.org (bridges to Discord/Slack)
+    - GitHub releases (built-in notifications)
 - **Files Created**:
-  - `peacefulrobot.github.io/.gitlab-ci.yml` - Added notify stage
-  - `.github/workflows/notify.yml` - GitHub notification workflow
-  - `NOTIFICATION_SETUP.md` - Complete setup instructions
-- **Commit**: `c2872fd` - "Add email notifications to y2077ada7@nine.testrun.org on deployments"
-- **Setup Required**: Add `MAILGUN_API_KEY` to GitLab CI/CD variables and GitHub Secrets
+  - `COMMUNITY_NOTIFICATIONS_TODO.md` - Complete implementation guide
+- **Commits**:
+  - `c2872fd` - "Add email notifications to y2077ada7@nine.testrun.org on deployments"
+  - `2c7f673` - "Remove email notification system" (reverted Mailgun approach)
+  - `7ec90f7` - "Add community notifications TODO, remove DeltaChat setup (private config)"
+  - `2f37d56` - "Remove DeltaChat notification from public CI (keep private)"
+  - `5256a4c` - "Add notification channels to TODO (private DeltaChat + public community)"
+- **Security**: All credentials stored in GitLab CI/CD variables, never in public repo
 
 ### 11. Git Sync Established
 - **Status**: ✅ Complete
@@ -244,12 +256,21 @@ update_dns:
   - GitLab established as source of truth
   - All changes pushed to both GitHub and GitLab
   - Proper GitOps workflow: GitLab first, then GitHub
-- **Commits Synced**:
+- **Commits Synced** (Session 2):
   - `88c04ab` - Documentation updates
   - `0b17a96` - Five nines architecture
   - `c18d98b` - Status tracking
   - `c2872fd` - Email notifications
-  - `e55834a` - Vercel fix (peacefulrobot.github.io submodule)
+  - `2c7f673` - Remove email notification system
+  - `7ec90f7` - Add community notifications TODO
+  - `e55834a` - Vercel fix
+  - `4a3b7ae` - Add DeltaChat SMTP notifications
+  - `2f37d56` - Remove DeltaChat from public CI
+  - `5256a4c` - Add notification channels to TODO
+  - `87a5fb2` - Add .gitignore for log files
+  - `e1e3884` - Update to 3-provider architecture
+  - `50bcafa` - Update TODO with setup tasks
+  - `6ee480f` - Final submodule update
 
 ## Files Changed This Session
 
@@ -266,15 +287,14 @@ update_dns:
 - `ACCOMPLISHED.md` (This file)
 
 ### Session 2 (2025-01-10)
-- `.github/workflows/multi-cloud-deploy.yml` (Multi-cloud deployment)
-- `.github/workflows/notify.yml` (Email notifications)
-- `peacefulrobot.github.io/firebase.json` (GCP config)
-- `peacefulrobot.github.io/staticwebapp.config.json` (Azure config)
+- `.github/workflows/multi-cloud-deploy.yml` (Multi-cloud deployment workflow)
 - `peacefulrobot.github.io/vercel.json` (Fixed GitHub integration)
 - `peacefulrobot.github.io/.vercelignore` (Exclude non-website files)
-- `peacefulrobot.github.io/.gitlab-ci.yml` (Added notify stage)
+- `peacefulrobot.github.io/.gitignore` (Ignore log files)
+- `peacefulrobot.github.io/TODO.md` (Updated with 3-provider architecture)
 - `FIVE_NINES_SETUP.md` (Complete setup guide)
 - `STATUS.md` (Progress tracker)
-- `NOTIFICATION_SETUP.md` (Email setup instructions)
+- `COMMUNITY_NOTIFICATIONS_TODO.md` (Notification implementation guide)
 - `TODO.md` (Updated with five nines progress)
 - `ACCOMPLISHED.md` (This file)
+- Removed: firebase.json, staticwebapp.config.json (simplified to 3 providers)
