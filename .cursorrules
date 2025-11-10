@@ -1,0 +1,14 @@
+# Cursor AI Rules
+
+## Security First
+Read and follow: `.ai/SECURITY_RULES.md`
+
+Privacy, safety, and security are ALWAYS prioritized.
+
+## Pre-Commit Checklist
+- [ ] No credentials in code
+- [ ] No sensitive files tracked
+- [ ] No personal info in docs
+- [ ] Security audit passed
+
+See `.ai/SECURITY_RULES.md` for complete requirements.

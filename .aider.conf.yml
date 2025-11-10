@@ -1,0 +1,12 @@
+# Aider AI Configuration
+
+# Security Rules
+# Read and follow: .ai/SECURITY_RULES.md
+
+# Pre-commit checks required
+# - No credentials in code
+# - No sensitive files tracked  
+# - No personal info in docs
+# - Security audit passed
+
+# See .ai/SECURITY_RULES.md for complete requirements
