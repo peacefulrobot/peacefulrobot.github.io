@@ -1,0 +1,37 @@
+name: Deployment Notification
+
+on:
+  push:
+    branches: [main, master]
+  workflow_run:
+    workflows: ["Multi-Cloud Deployment"]
+    types: [completed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Send email notification
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          COMMIT_SHA=$(git log -1 --pretty=%h)
+          COMMIT_AUTHOR=$(git log -1 --pretty=%an)
+          
+          curl -X POST "https://api.mailgun.net/v3/testrun.org/messages" \
+            --user "api:${{ secrets.MAILGUN_API_KEY }}" \
+            -F from="Peaceful Robot CI <noreply@testrun.org>" \
+            -F to="y2077ada7@nine.testrun.org" \
+            -F subject="[Peaceful Robot] GitHub Deployment: ${COMMIT_SHA}" \
+            -F text="GitHub deployment completed for peacefulrobot.com
+
+          Commit: ${COMMIT_SHA}
+          Author: ${COMMIT_AUTHOR}
+          Message: ${COMMIT_MSG}
+
+          Deployed to:
+          - Vercel: https://www.peacefulrobot.com
+          - GitHub Pages: https://peacefulrobot.github.io/
+
+          View commit: https://github.com/peacefulrobot/peacefulrobot.github.io/commit/${GITHUB_SHA}"
