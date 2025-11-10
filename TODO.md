@@ -27,6 +27,45 @@
 
 ## Future Enhancements
 
+### Agentic Framework for Open Source Security
+**Vision**: Transform peacefulrobot.com into an agentic framework that makes open source projects secure
+
+**Goal**: Automated security analysis and remediation for open source projects using AI agents
+
+**Core Capabilities**:
+1. **Autonomous Security Scanning**
+   - AI agents continuously monitor open source repositories
+   - Detect vulnerabilities, misconfigurations, and security anti-patterns
+   - Multi-language support (.NET, C#, Python, JavaScript, etc.)
+
+2. **Intelligent Remediation**
+   - Agents propose and implement security fixes
+   - Generate pull requests with explanations
+   - Learn from accepted/rejected fixes
+
+3. **Security as Code**
+   - Automated security policy enforcement
+   - CI/CD integration for continuous security validation
+   - Infrastructure security checks (DNS, SSL, deployment configs)
+
+4. **Community-Driven Intelligence**
+   - Share vulnerability patterns across projects
+   - Collaborative security knowledge base
+   - Open source security best practices library
+
+**Implementation Approach**:
+- Build on existing tools (security_check.py, update_godaddy_dns.py)
+- Integrate with GitLab/GitHub APIs for repository access
+- Use LLM agents for code analysis and fix generation
+- Deploy as microservices on peacefulrobot.com
+- Fund through bug bounty programs
+
+**Phases**:
+1. Phase 1: Static analysis agent for Python projects
+2. Phase 2: Multi-language support and fix generation
+3. Phase 3: Infrastructure security automation
+4. Phase 4: Community platform and knowledge sharing
+
 ### Notification Channel for Changes
 **Goal**: Create automated notifications for website/infrastructure changes in a digested format
 
