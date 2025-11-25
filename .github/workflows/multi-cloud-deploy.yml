@@ -1,17 +1,139 @@
-name: Multi-Cloud Deployment
+name: Multi-Cloud Deployment with Cross-Repository Coordination
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+  repository_dispatch:
+    types: [content-updated, deployment-triggered]
+  schedule:
+    # Daily sync check at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  CONTENT_REPO_URL: "https://gitlab.com/peaceful-robot/peacefulrobot.com.git"
+  CONTENT_REPO_TOKEN: ${{ secrets.CONTENT_REPO_TOKEN }}
+  INFRA_REPO_TOKEN: ${{ secrets.INFRA_REPO_TOKEN }}
 
 jobs:
+  # Job 1: Sync content from content repository
+  sync-content:
+    runs-on: ubuntu-latest
+    outputs:
+      sync_status: ${{ steps.sync.outputs.status }}
+      sync_commit: ${{ steps.sync.outputs.commit }}
+    steps:
+      - name: Checkout infrastructure repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Git credentials
+        run: |
+          git config --global user.name "peaceful-robot-bot"
+          git config --global user.email "bot@peacefulrobot.com"
+
+      - name: Sync content from GitLab repository
+        id: sync
+        run: |
+          # Install jq for JSON processing
+          sudo apt-get update && sudo apt-get install -y jq
+          
+          # Clone content repository
+          echo "Cloning content repository..."
+          git clone "https://oauth2:$CONTENT_REPO_TOKEN@$CONTENT_REPO_URL" temp_content
+          
+          cd temp_content
+          CONTENT_COMMIT=$(git rev-parse HEAD)
+          echo "Content commit: $CONTENT_COMMIT"
+          
+          # Validate content
+          if [ ! -f "index.html" ] || [ ! -s "index.html" ]; then
+            echo "ERROR: Valid index.html not found"
+            exit 1
+          fi
+          
+          # Check for security headers
+          if ! grep -q "Content-Security-Policy" index.html; then
+            echo "WARNING: Content-Security-Policy header missing"
+          fi
+          
+          if ! grep -q "X-Frame-Options" index.html; then
+            echo "WARNING: X-Frame-Options header missing"
+          fi
+          
+          # Copy content to infrastructure repository
+          echo "Copying content..."
+          cp index.html ../
+          
+          # Get content repository info
+          cd ..
+          cd temp_content
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          
+          echo "Content repository info:"
+          echo "  Branch: $BRANCH"
+          echo "  Commit: $CONTENT_COMMIT"
+          echo "  Message: $COMMIT_MESSAGE"
+          
+          cd ..
+          
+          # Create sync status file
+          cat > sync_status.json << EOF
+          {
+            "sync_timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "content_commit": "$CONTENT_COMMIT",
+            "content_branch": "$BRANCH",
+            "content_message": "$COMMIT_MESSAGE",
+            "sync_status": "completed"
+          }
+          EOF
+          
+          # Set outputs
+          echo "status=completed" >> $GITHUB_OUTPUT
+          echo "commit=$CONTENT_COMMIT" >> $GITHUB_OUTPUT
+
+      - name: Commit synchronized content
+        if: steps.sync.outputs.status == 'completed'
+        run: |
+          git add index.html sync_status.json
+          git commit -m "Sync content from peaceful-robot/peacefulrobot.com
+
+Automated synchronization from GitLab content repository
+Commit: ${{ steps.sync.outputs.commit }}
+$(date -u +"%Y-%m-%d %H:%M:%S UTC")" || echo "No changes to commit"
+          
+          # Push changes (if not in dry-run mode)
+          if [ "$PUSH_CHANGES" != "false" ]; then
+            git push origin main
+          else
+            echo "Dry run mode: changes not pushed"
+          fi
+
+      - name: Upload sync artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-artifacts
+          path: |
+            sync_status.json
+          retention-days: 7
+
+  # Job 2: Deploy to AWS S3
   deploy-aws:
     runs-on: ubuntu-latest
+    needs: [sync-content]
+    if: needs.sync-content.outputs.sync_status == 'completed'
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -22,19 +144,34 @@ jobs:
       
       - name: Deploy to S3
         run: |
-          cd peacefulrobot.github.io
-          aws s3 sync . s3://peacefulrobot-site --delete --exclude ".git/*" --exclude ".gitlab-ci.yml"
+          aws s3 sync . s3://${{ secrets.AWS_S3_BUCKET }} \
+            --delete \
+            --exclude ".git/*" \
+            --exclude ".github/*" \
+            --exclude "scripts/*" \
+            --exclude "*.md"
       
       - name: Invalidate CloudFront
+        if: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID != '' }}
         run: |
-          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
 
+  # Job 3: Deploy to Google Firebase
   deploy-gcp:
     runs-on: ubuntu-latest
+    needs: [sync-content]
+    if: needs.sync-content.outputs.sync_status == 'completed'
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
       
       - name: Setup Firebase
         uses: w9jds/firebase-action@master
@@ -42,13 +179,16 @@ jobs:
           args: deploy --only hosting
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-          PROJECT_PATH: peacefulrobot.github.io
 
+  # Job 4: Deploy to Azure Static Web Apps
   deploy-azure:
     runs-on: ubuntu-latest
+    needs: [sync-content]
+    if: needs.sync-content.outputs.sync_status == 'completed'
     steps:
       - uses: actions/checkout@v4
         with:
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
           submodules: true
       
       - name: Deploy to Azure Static Web Apps
@@ -57,5 +197,184 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "peacefulrobot.github.io"
-          skip_app_build: true
+          app_location: "."
+          output_location: "."
+
+  # Job 5: Deploy to Vercel (using existing configuration)
+  deploy-vercel:
+    runs-on: ubuntu-latest
+    needs: [sync-content]
+    if: needs.sync-content.outputs.sync_status == 'completed'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+      
+      - name: Deploy to Vercel
+        uses: vercel/action@v1
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  # Job 6: Deploy to Netlify (using existing configuration)
+  deploy-netlify:
+    runs-on: ubuntu-latest
+    needs: [sync-content]
+    if: needs.sync-content.outputs.sync_status == 'completed'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+      
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2
+        with:
+          publish-dir: '.'
+          production-branch: main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy from GitHub Actions"
+          enable-pull-request-comment: true
+          enable-commit-comment: true
+          overwrites-pull-request-comment: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+  # Job 7: Trigger GitLab Pages deployment
+  trigger-gitlab-deployment:
+    runs-on: ubuntu-latest
+    needs: [sync-content]
+    if: needs.sync-content.outputs.sync_status == 'completed'
+    steps:
+      - name: Trigger GitLab CI
+        run: |
+          curl -X POST \
+            -H "PRIVATE-TOKEN: ${{ secrets.GITLAB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://gitlab.com/api/v4/projects/${{ secrets.GITLAB_PROJECT_ID }}/trigger/pipeline \
+            -d '{
+              "ref": "main",
+              "variables[WEBHOOK_EVENT]": "content_updated",
+              "variables[SYNC_COMMIT]": "${{ needs.sync-content.outputs.sync_commit }}",
+              "variables[DEPLOYMENT_SOURCE]": "github_actions"
+            }'
+
+  # Job 8: Health checks and monitoring
+  health-check:
+    runs-on: ubuntu-latest
+    needs: [deploy-aws, deploy-gcp, deploy-azure, deploy-vercel, deploy-netlify]
+    if: always()
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install health check dependencies
+        run: npm install -g axios
+      
+      - name: Run health checks
+        run: |
+          node -e "
+          const axios = require('axios');
+          
+          const endpoints = [
+            'https://peacefulrobot-github-io-5de419.gitlab.io/',
+            'https://peacefulrobot-github-io.vercel.app/',
+            'https://peacefulrobot.netlify.app/'
+          ];
+          
+          const results = [];
+          
+          async function checkEndpoint(url) {
+            try {
+              const response = await axios.get(url, { timeout: 10000 });
+              results.push({ url, status: response.status, healthy: true });
+            } catch (error) {
+              results.push({ url, error: error.message, healthy: false });
+            }
+          }
+          
+          async function runHealthChecks() {
+            console.log('Running health checks...');
+            
+            for (const url of endpoints) {
+              await checkEndpoint(url);
+              // Add delay between checks
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            // Print results
+            console.log('\nHealth Check Results:');
+            results.forEach(result => {
+              if (result.healthy) {
+                console.log(\`✅ \${result.url} - Status: \${result.status}\`);
+              } else {
+                console.log(\`❌ \${result.url} - Error: \${result.error}\`);
+              }
+            });
+            
+            // Check if any endpoints failed
+            const failedEndpoints = results.filter(r => !r.healthy);
+            if (failedEndpoints.length > 0) {
+              console.log(\`\n⚠️  \${failedEndpoints.length} endpoint(s) failed health check\`);
+              process.exit(1);
+            } else {
+              console.log('\n✅ All endpoints healthy');
+            }
+          }
+          
+          runHealthChecks().catch(console.error);
+          "
+
+  # Job 9: Send deployment notifications
+  notify-deployment:
+    runs-on: ubuntu-latest
+    needs: [health-check]
+    if: always()
+    steps:
+      - name: Send deployment notification
+        run: |
+          # Determine deployment status
+          if [ "${{ needs.health-check.result }}" == "success" ]; then
+            STATUS="success"
+            MESSAGE="✅ All platforms deployed successfully"
+          else
+            STATUS="failure"
+            MESSAGE="❌ Deployment completed with errors"
+          fi
+          
+          # Send notification to Matrix (if webhook configured)
+          if [ -n "${{ secrets.MATRIX_WEBHOOK_URL }}" ]; then
+            echo "Sending Matrix notification..."
+            curl -X POST \
+              -H "Content-Type: application/json" \
+              -d "{\"text\": \"Deployment Status: $MESSAGE\nCommit: ${{ needs.sync-content.outputs.sync_commit }}\"}" \
+              ${{ secrets.MATRIX_WEBHOOK_URL }}
+          fi
+          
+          # Send notification to Mastodon (if token configured)
+          if [ -n "${{ secrets.MASTODON_TOKEN }}" ]; then
+            echo "Sending Mastodon notification..."
+            curl -X POST \
+              -H "Authorization: Bearer ${{ secrets.MASTODON_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"status\": \"$MESSAGE - Commit: ${{ needs.sync-content.outputs.sync_commit }}\"}" \
+              https://mastodon.social/api/v1/statuses
+          fi
+
+  # Job 10: Cleanup temporary files
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: [notify-deployment]
+    if: always()
+    steps:
+      - name: Cleanup
+        run: |
+          echo "Cleaning up temporary files..."
+          rm -rf temp_content
+          echo "Cleanup completed"
