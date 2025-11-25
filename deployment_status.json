@@ -1,0 +1,10 @@
+{
+  "deployment_id": "1764060229",
+  "started_at": "2025-11-25T08:43:49Z",
+  "status": "completed",
+  "platforms": [
+    "gitlab-pages"
+  ],
+  "errors": [],
+  "ended_at": "2025-11-25T08:43:49Z"
+}
