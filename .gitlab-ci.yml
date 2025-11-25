@@ -1,11 +1,165 @@
-pages:
-  stage: deploy
+stages:
+  - sync
+  - validate
+  - deploy
+
+variables:
+  CONTENT_REPO: "https://gitlab.com/peaceful-robot/peacefulrobot.com.git"
+  TEMP_DIR: "temp_content"
+  DEPLOY_STATUS_FILE: "deployment_status.json"
+
+# Content synchronization stage
+sync_content:
+  stage: sync
+  image: alpine/git:latest
+  before_script:
+    - apk add --no-cache curl jq
   script:
-    - mkdir -p public
-    - cp index.html public/
-    - cp -r * public/ 2>/dev/null || true
+    - echo "Starting content synchronization..."
+    - |
+      if [ -z "$CONTENT_REPO_TOKEN" ]; then
+        echo "ERROR: CONTENT_REPO_TOKEN not configured"
+        exit 1
+      fi
+    - git clone https://oauth2:$CONTENT_REPO_TOKEN@$CONTENT_REPO $TEMP_DIR
+    - cd $TEMP_DIR
+    - git fetch origin main
+    - git checkout origin/main
+    - |
+      # Validate index.html exists and has content
+      if [ ! -f "index.html" ] || [ ! -s "index.html" ]; then
+        echo "ERROR: Valid index.html not found in content repository"
+        exit 1
+      fi
+    - echo "Content synchronized successfully from $CONTENT_REPO"
+    - git log --oneline -5 > ../sync_info.log
   artifacts:
     paths:
-      - public
+      - $TEMP_DIR/
+      - sync_info.log
+    expire_in: 1 hour
   only:
+    - webhooks
     - main
+
+# Content validation stage
+validate_content:
+  stage: validate
+  image: alpine/git:latest
+  before_script:
+    - apk add --no-cache curl jq
+  script:
+    - echo "Validating synchronized content..."
+    - cd $TEMP_DIR
+    - |
+      # Check for required security headers
+      if ! grep -q "Content-Security-Policy" index.html; then
+        echo "WARNING: Content-Security-Policy header missing"
+      fi
+      if ! grep -q "X-Frame-Options" index.html; then
+        echo "WARNING: X-Frame-Options header missing"
+      fi
+    - echo "Content validation completed"
+  needs: ["sync_content"]
+  only:
+    - webhooks
+    - main
+
+# Multi-platform deployment stage
+deploy_all_platforms:
+  stage: deploy
+  image: node:18-alpine
+  before_script:
+    - apk add --no-cache git curl
+    - npm install -g vercel netlify-cli @vercel/cli
+  script:
+    - echo "Starting multi-platform deployment..."
+    - cd $TEMP_DIR
+    - |
+      # Prepare deployment status
+      DEPLOY_START=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      echo "{" > ../$DEPLOY_STATUS_FILE
+      echo '  "deployment_id": "'$CI_PIPELINE_ID'",' >> ../$DEPLOY_STATUS_FILE
+      echo '  "started_at": "'$DEPLOY_START'",' >> ../$DEPLOY_STATUS_FILE
+      echo '  "status": "in_progress",' >> ../$DEPLOY_STATUS_FILE
+      echo '  "platforms": []' >> ../$DEPLOY_STATUS_FILE
+      echo "}" >> ../$DEPLOY_STATUS_FILE
+    - |
+      # Deploy to Vercel
+      if [ -n "$VERCEL_TOKEN" ]; then
+        echo "Deploying to Vercel..."
+        cd $TEMP_DIR
+        echo '{"version":2}' > vercel.json
+        vercel --token $VERCEL_TOKEN --prod --yes
+        echo "Vercel deployment completed"
+      fi
+    - |
+      # Deploy to Netlify
+      if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
+        echo "Deploying to Netlify..."
+        cd $TEMP_DIR
+        netlify deploy --prod --auth $NETLIFY_AUTH_TOKEN
+        echo "Netlify deployment completed"
+      fi
+    - |
+      # Update deployment status
+      DEPLOY_END=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      jq ".status = \"completed\" | .ended_at = \"$DEPLOY_END\" | .platforms += [\"gitlab-pages\", \"vercel\", \"netlify\"]" ../$DEPLOY_STATUS_FILE > temp_status.json
+      mv temp_status.json ../$DEPLOY_STATUS_FILE
+  needs: ["validate_content"]
+  artifacts:
+    paths:
+      - $DEPLOY_STATUS_FILE
+      - sync_info.log
+    expire_in: 1 hour
+  only:
+    - webhooks
+    - main
+
+# Notify other systems of deployment completion
+notify_deployment:
+  stage: deploy
+  image: alpine/git:latest
+  before_script:
+    - apk add --no-cache curl jq
+  script:
+    - echo "Notifying external systems of deployment completion..."
+    - |
+      # Send GitHub repository dispatch if configured
+      if [ -n "$GITHUB_TOKEN" ] && [ -n "$GITHUB_REPO_OWNER" ] && [ -n "$GITHUB_REPO_NAME" ]; then
+        echo "Triggering GitHub repository dispatch..."
+        curl -X POST \
+          -H "Authorization: token $GITHUB_TOKEN" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/$GITHUB_REPO_OWNER/$GITHUB_REPO_NAME/dispatches \
+          -d '{"event_type": "deployment_completed", "client_payload": {"pipeline_id": '$CI_PIPELINE_ID', "status": "success"}}'
+      fi
+    - |
+      # Send webhook notification if configured
+      if [ -n "$WEBHOOK_URL" ]; then
+        echo "Sending webhook notification..."
+        curl -X POST \
+          -H "Content-Type: application/json" \
+          -d '{"event": "deployment_completed", "pipeline_id": '$CI_PIPELINE_ID', "status": "success", "timestamp": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}' \
+          $WEBHOOK_URL
+      fi
+  needs: ["deploy_all_platforms"]
+  only:
+    - webhooks
+    - main
+
+# Webhook handler (for GitHub repository dispatch)
+webhook_handler:
+  stage: sync
+  image: alpine/git:latest
+  before_script:
+    - apk add --no-cache curl jq
+  script:
+    - echo "Processing webhook trigger..."
+    - |
+      if [ "$WEBHOOK_EVENT" = "push" ] && [ "$CI_COMMIT_BRANCH" = "main" ]; then
+        echo "Triggering deployment workflow..."
+        # This job will be picked up by the sync_content job
+      fi
+  only:
+    - webhooks
