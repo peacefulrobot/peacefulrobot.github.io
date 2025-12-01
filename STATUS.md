@@ -35,20 +35,17 @@
 
 ## 🔄 In Progress
 
-### GitLab Pages
-- ✅ **Working**: https://peacefulrobot-github-io-5de419.gitlab.io/
-- ✅ Shows updated content with Mastodon link
-- ✅ Version 394a147 deployed
-- ✅ "Multi-Platform ✅" marker visible
+### GitLab Pages (Source of Truth)
+- ✅ **Working**: https://peacefulrobot-com-cec744.gitlab.io/
+- ✅ Direct deployment from content repository (gitlab.com/peaceful-robot/peacefulrobot.com)
+- ✅ Shows updated content with security headers
+- ✅ Source of truth for GitOps strategy
 
-### Vercel
-- ⚠️ **Issue**: https://peacefulrobot-github-io.vercel.app/ returns 404
-- ⚠️ https://www.peacefulrobot.com also returns 404
-- **Possible Causes**:
-  - Vercel project not connected to GitHub repo
-  - Build configuration issue
-  - Root directory misconfigured
-  - Need to reconnect Vercel webhook
+### Vercel (Deployment Target)
+- ✅ **Working**: https://peacefulrobot-github-io.vercel.app/ returns 200
+- ✅ https://www.peacefulrobot.com redirects to Vercel and works
+- ✅ Vercel deployment active and serving content
+- ✅ Main domain correctly configured
 
 ## ⏳ Next Actions
 
@@ -98,13 +95,12 @@
 
 ### Current Deployment
 ```
-GitLab Pages: ✅ Working
-GitHub Pages: ⏳ Not configured
-Vercel: ⚠️ 404 error
-Netlify: ⏳ Not configured
-AWS: ⏳ Not deployed
-GCP: ⏳ Not deployed
-Azure: ⏳ Not deployed
+GitLab Pages (Source): ✅ Working
+Vercel (Main Domain): ✅ Working
+Netlify: ❌ 404 error (needs configuration)
+AWS S3+CloudFront: ⏳ Not deployed
+GCP Firebase: ⏳ Not deployed  
+Azure Static Apps: ⏳ Not deployed
 ```
 
 ### Target Architecture
@@ -138,8 +134,10 @@ Cloudflare DNS (load balancing + health checks)
 
 ## 📝 Notes
 
-- GitLab Pages is currently the only working deployment
-- Vercel needs troubleshooting (404 error)
-- GitHub Actions workflow ready but needs cloud credentials
+- ✅ GitLab Pages is the source of truth deployment (peacefulrobot-com-cec744.gitlab.io)
+- ✅ Vercel deployment working correctly with main domain
+- ✅ Content appears synchronized between GitLab Pages and Vercel
+- ⚠️ Netlify needs configuration (404 error)
+- GitHub Actions workflow ready but needs cloud credentials for AWS/GCP/Azure
 - All configuration files in place
-- Documentation complete
+- Documentation updated to reflect current status

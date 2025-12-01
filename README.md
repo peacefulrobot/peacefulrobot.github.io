@@ -21,7 +21,7 @@ Privacy, safety, and security are NON-NEGOTIABLE.
 **Multi-cloud GitOps infrastructure achieving 99.999% uptime at $0/month.**
 
 ### ✅ Currently Working (Production Ready)
-- **GitLab Pages**: https://peacefulrobot-github-io-5de419.gitlab.io/
+- **GitLab Pages (Source of Truth)**: https://peacefulrobot-com-cec744.gitlab.io/
 - **Vercel**: https://peacefulrobot-github-io.vercel.app/
 - **Main Domain**: https://www.peacefulrobot.com/
 
@@ -234,13 +234,13 @@ AZURE_STATIC_WEB_APPS_API_TOKEN: "..."              # Azure SWA token
 ### Current Status
 ```bash
 # Check all deployment endpoints
-echo "=== GitLab Pages ===" && curl -s -I https://peacefulrobot-github-io-5de419.gitlab.io/
+echo "=== GitLab Pages (Source) ===" && curl -s -I https://peacefulrobot-com-cec744.gitlab.io/
 echo "=== Vercel ===" && curl -s -I https://peacefulrobot-github-io.vercel.app/
 echo "=== Main Domain ===" && curl -s -I https://www.peacefulrobot.com/
 
 # Content verification
 curl -s https://peacefulrobot-github-io.vercel.app/ | grep -E "(title|Peaceful Robot)"
-curl -s https://peacefulrobot-github-io-5de419.gitlab.io/ | grep -E "(title|Peaceful Robot)"
+curl -s https://peacefulrobot-com-cec744.gitlab.io/ | grep -E "(title|Peaceful Robot)"
 ```
 
 ### Uptime Targets
@@ -337,12 +337,14 @@ stages:
 ## 🎯 Success Criteria
 
 ### Deployment Validation
-- [x] GitLab Pages serving correct content
+- [x] GitLab Pages serving correct content (source of truth)
 - [x] Vercel serving correct content
 - [x] Main domain redirecting correctly
 - [x] HTTPS certificates working
-- [x] Content consistency across platforms
+- [x] Content consistency across active platforms
 - [x] Deployment automation functional
+- [⚠️] Netlify needs fixing (404 error)
+- [ ] AWS/GCP/Azure deployments needed
 
 ### Next Phase Targets
 - [ ] Add 3 more platforms (AWS, GCP, Azure)
